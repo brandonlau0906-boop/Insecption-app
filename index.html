@@ -146,6 +146,9 @@
         let aiModel = null;
         let items = [];
 
+        const WARN_DESC = '⚠️ 無法自動識別此照片之建築缺陷，請點擊此處輸入詳細描述與風險。';
+        const WARN_REC = '⚠️ 無法自動識別此照片之建築缺陷，請點擊此處輸入建議修補方案。';
+
         // 專業驗樓風險與描述資料庫
         const inspectRules = [
             {
@@ -219,10 +222,10 @@
                     id: index,
                     imgData: base64Img,
                     location: `位置 #${index + 1}`,
-                    type: '',
+                    type: '分析中...',
                     severity: '中 (Medium)',
-                    description: '',
-                    recommendation: '',
+                    description: WARN_DESC,
+                    recommendation: WARN_REC,
                     detected: false
                 };
                 items.push(itemData);
@@ -268,10 +271,10 @@
                             items[index].detected = true;
                         } else {
                             items[index].location = `檢查區域 (#${index + 1})`;
-                            items[index].type = '';
+                            items[index].type = '待填寫項目';
                             items[index].severity = '中 (Medium)';
-                            items[index].description = '';
-                            items[index].recommendation = '';
+                            items[index].description = WARN_DESC;
+                            items[index].recommendation = WARN_REC;
                             items[index].detected = false;
                         }
 
@@ -287,10 +290,10 @@
 
         function applyUnrecognized(index) {
             items[index].location = `檢查區域 (#${index + 1})`;
-            items[index].type = '';
+            items[index].type = '待填寫項目';
             items[index].severity = '中 (Medium)';
-            items[index].description = '';
-            items[index].recommendation = '';
+            items[index].description = WARN_DESC;
+            items[index].recommendation = WARN_REC;
             items[index].detected = false;
             updateCardUI(index);
         }
@@ -313,27 +316,52 @@
                     </div>
                     <div>
                         <label>缺陷類型</label>
-                        <input type="text" id="type-${item.id}" value="${item.type}" placeholder="例：牆面及磁磚狀況檢查" onchange="items[${item.id}].type=this.value">
+                        <input type="text" id="type-${item.id}" value="${item.type}" onchange="items[${item.id}].type=this.value">
                     </div>
                     <div>
                         <label>嚴重程度</label>
                         <select id="sev-${item.id}" onchange="items[${item.id}].severity=this.value">
                             <option value="高 (High)">高 (High)</option>
-                            <option value="中 (Medium)" selected>中 (Medium)</option>
+                            <option value="中 (Medium)">中 (Medium)</option>
                             <option value="低 (Low)">低 (Low)</option>
                         </select>
                     </div>
                     <div>
                         <label>詳細描述與風險</label>
-                        <textarea id="desc-${item.id}" placeholder="無法自動識別此照片之建築缺陷，請點擊輸入詳細描述與風險..." onchange="items[${item.id}].description=this.value">${item.description}</textarea>
+                        <textarea id="desc-${item.id}" 
+                            onfocus="handleFocus(this, '${WARN_DESC}')" 
+                            onblur="handleBlur(this, '${WARN_DESC}', ${item.id}, 'desc')" 
+                            onchange="items[${item.id}].description=this.value">${item.description}</textarea>
                     </div>
                     <div>
                         <label>建議修補方案</label>
-                        <textarea id="rec-${item.id}" placeholder="請點擊輸入建議修補方案..." onchange="items[${item.id}].recommendation=this.value">${item.recommendation}</textarea>
+                        <textarea id="rec-${item.id}" 
+                            onfocus="handleFocus(this, '${WARN_REC}')" 
+                            onblur="handleBlur(this, '${WARN_REC}', ${item.id}, 'rec')" 
+                            onchange="items[${item.id}].recommendation=this.value">${item.recommendation}</textarea>
                     </div>
                 </div>
             `;
             container.appendChild(card);
+        }
+
+        // 當點擊輸入框時，若內容為預設警告文字則自動清空
+        function handleFocus(element, defaultText) {
+            if (element.value === defaultText) {
+                element.value = '';
+            }
+        }
+
+        // 當離開輸入框時，若未輸入任何文字則還原預設警告文字
+        function handleBlur(element, defaultText, id, key) {
+            if (element.value.trim() === '') {
+                element.value = defaultText;
+                if (key === 'desc') items[id].description = defaultText;
+                if (key === 'rec') items[id].recommendation = defaultText;
+            } else {
+                if (key === 'desc') items[id].description = element.value;
+                if (key === 'rec') items[id].recommendation = element.value;
+            }
         }
 
         function updateCardUI(index) {
@@ -375,17 +403,16 @@
                     bytes[j] = binaryString.charCodeAt(j);
                 }
 
-                // 若未手動填寫且未識別出，則於 Word 顯示為「待補充」
-                const displayType = item.type.trim() || '未分類項目';
-                const displayDesc = item.description.trim() || '（待現場補充詳細描述與風險）';
-                const displayRec = item.recommendation.trim() || '（待現場補充建議修補方案）';
+                // 若匯出時仍為預設提示文字，自動轉為乾淨的「（待現場補充）」
+                const finalDesc = (item.description === WARN_DESC || !item.description.trim()) ? '（待現場補充詳細描述與風險）' : item.description;
+                const finalRec = (item.recommendation === WARN_REC || !item.recommendation.trim()) ? '（待現場補充建議修補方案）' : item.recommendation;
 
                 const fields = [
                     ["位置 / 項目", item.location],
-                    ["缺陷類型", displayType],
+                    ["缺陷類型", item.type],
                     ["嚴重程度", item.severity],
-                    ["詳細描述與風險", displayDesc],
-                    ["建議修補方案", displayRec]
+                    ["詳細描述與風險", finalDesc],
+                    ["建議修補方案", finalRec]
                 ];
 
                 const infoRows = fields.map(([label, val]) => {
