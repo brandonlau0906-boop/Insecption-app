@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏢 驗樓助手 - 智慧視覺分析與報告生成器</title>
+    <title>🏢 驗樓助手 - 專業視覺分析報告生成器</title>
     <!-- 載入 Word 匯出元件 -->
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-    <!-- 載入免費內置 AI 模型 (TensorFlow.js + MobileNet) -->
+    <!-- 載入內置 AI 模型 (TensorFlow.js + MobileNet) -->
     <script src="https://unpkg.com/@tensorflow/tfjs"></script>
     <script src="https://unpkg.com/@tensorflow-models/mobilenet"></script>
     
@@ -30,13 +30,15 @@
         textarea { resize: vertical; height: 75px; }
         .btn-export { width: 100%; background: #1b365d; color: white; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; }
         .btn-export:hover { background: #132744; }
-        .badge { background: #52c41a; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; font-weight: bold; }
+        .badge-success { background: #52c41a; color: white; }
+        .badge-warning { background: #fa8c16; color: white; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🏢 樓宇驗樓 智慧 AI 自動視覺分析與報告生成器</h1>
-        <p class="subtitle">免 API Key、完全免費！自動辨識視覺特徵並產出對應缺陷描述與專業修補方案。</p>
+        <h1>🏢 樓宇驗樓 自動視覺分析與報告生成器</h1>
+        <p class="subtitle">免 API Key、完全免費！無法自動識別時將提示手動填寫。</p>
         
         <div id="statusBox" class="model-status">⏳ 正在載入內置 AI 視覺模型，請稍候...</div>
 
@@ -55,66 +57,49 @@
         let aiModel = null;
         let items = [];
 
-        // 豐富的驗樓知識庫映射 (根據 AI 辨識的關鍵字自動帶入對應專業分析)
-        const defectDatabase = [
+        // 驗樓特徵比對庫
+        const inspectRules = [
             {
-                keywords: ['pipe', 'tub', 'sink', 'faucet', 'plumbing', 'drain', 'shower'],
-                location: '水喉 / 衛浴設施',
-                type: '管道水喉狀況',
-                severity: '中 (Medium)',
-                description: '視覺特徵顯示為水喉及管道區域。需關注周邊是否有潮濕、積水或滲漏痕跡，金屬介面處是否有鏽蝕或鬆脫風化現象，避免日後造成牆體漏水風險。',
-                recommendation: '建議進行通水與壓差測試，檢查水管接縫密封性。如有鏽蝕應更換接頭並加強防水矽膠（Sausage/Silicone）封堵。'
+                keys: ['pipe', 'tub', 'sink', 'faucet', 'plumbing', 'drain', 'shower', 'basin', 'toilet'],
+                loc: '衛浴 / 水管管道',
+                type: '水處設施及管道檢查',
+                sev: '中 (Medium)',
+                desc: '經視覺掃描，該區域涉及水喉及潔具配件。重點檢查項目包括管路接縫密封性、排水順暢度及金屬介面是否有滲漏風化痕跡。',
+                rec: '進行通水與試壓測試，對老化的矽膠膠條進行拆除重新打膠，確保無漏水隱患。'
             },
             {
-                keywords: ['wall', 'tile', 'brick', 'plaster', 'concrete'],
-                location: '客廳 / 房間牆身及磁磚',
-                type: '牆面抹灰 / 磁磚狀況',
-                severity: '中 (Medium)',
-                description: '檢測到牆面或粉刷結構。可能存在油漆剝落、微細髮絲裂紋或批盪不平整等問題，若未及時處置容易受潮膨脹剝落。',
-                recommendation: '建議使用高清驗樓鎚進行敲擊試驗測試是否有空鼓。若有裂痕，需剷除鬆散油漆層，重新施作抗裂底漆與面漆。'
+                keys: ['wall', 'tile', 'brick', 'plaster', 'concrete', 'stone'],
+                loc: '牆面 / 飾面磁磚',
+                type: '牆面抹灰與表面飾面',
+                sev: '中 (Medium)',
+                desc: '檢測到牆體或飾面結構。主要檢查是否有批盪不平整、漆面開裂、受潮剝落或磁磚空鼓等情況。',
+                rec: '使用驗樓敲擊棒試敲確認空鼓範圍，開裂處需剷除舊漆層後重施抗裂底漆與面漆。'
             },
             {
-                keywords: ['window', 'glass', 'frame', 'sliding door', 'blind'],
-                location: '窗戶 / 鋁窗區域',
-                type: '鋁窗與玻璃組件',
-                severity: '高 (High)',
-                description: '發現窗框及玻璃結構。需特別關注窗框周邊防水膠條是否老化開裂、鎖扣是否順暢，若膠條老化在暴雨天極易引發滲水入室。',
-                recommendation: '檢查窗框四角防水密封膠，更換老化硬化的防水膠條，並測試開關關閉緊密性與鎖扣功能。'
+                keys: ['window', 'glass', 'frame', 'sliding'],
+                loc: '客廳 / 房間窗戶',
+                type: '鋁窗及玻璃配件',
+                sev: '高 (High)',
+                desc: '檢測到窗框或玻璃組件。需關注窗框四角防水膠條是否硬化開裂、鉸鏈是否鬆動及雨天滲水風險。',
+                rec: '測試開關緊密性，重新補打外框防水膠，更換磨損的窗框軟膠條。'
             },
             {
-                keywords: ['door', 'cabinet', 'wood', 'furniture'],
-                location: '門扇 / 木作櫃體',
-                type: '木作與門窗貼皮',
-                severity: '低 (Low)',
-                description: '發現木製門扇或櫃體邊角。常見問題包含門扇關閉不順、門頁鉸鏈鬆動、木皮飾面受潮膨脹開裂或刮傷痕跡。',
-                recommendation: '微調門頁鉸鏈金屬螺絲以矯正門扇下垂，對開裂木皮進行填縫補漆修飾，並確保周邊環境乾燥。'
+                keys: ['door', 'cabinet', 'wood', 'table', 'chair'],
+                loc: '室內木作 / 櫃體',
+                type: '飾面與結構組件檢查',
+                sev: '低 (Low)',
+                desc: '現場照片顯示包含木作櫃體或門扇。重點檢查邊角是否有刮痕、飾面貼皮膨脹起泡或關閉不平整現象。',
+                rec: '針對表面劃痕進行木作補漆修飾，微調鉸鏈或邊條，保持環境乾燥以防受潮。'
             },
             {
-                keywords: ['light', 'lamp', 'socket', 'switch', 'wire', 'electronic'],
-                location: '開關面板 / 電器配線',
-                type: '電力裝置與開關',
-                severity: '高 (High)',
-                description: '發現電器開關或線路區域。需驗證是否有線路外露、開關面板安裝不平整，或缺乏接地保護等安全隱患。',
-                recommendation: '使用相位檢測器測試插座接線是否正確（火線、零線、地線），並確保所有面板緊貼牆面無鬆動。'
-            },
-            {
-                keywords: ['floor', 'carpet', 'mat', 'pavement'],
-                location: '地面 / 地磚飾面',
-                type: '地板鋪設狀況',
-                severity: '中 (Medium)',
-                description: '發現地面鋪設材料。常見問題為地磚高低不平（打腳）、木地板起拱或邊縫過大，影響美觀及行走安全。',
-                recommendation: '對高低不平處進行記錄，邊角縫隙過大處需使用同色填縫劑（Grout）補平，並重新壓實邊條。'
+                keys: ['light', 'lamp', 'socket', 'switch', 'wire', 'electronic', 'plug'],
+                loc: '開關插座 / 電器設備',
+                type: '電力裝置與面板檢查',
+                sev: '高 (High)',
+                desc: '發現開關面板或電器線路區域。需驗證線路收口是否完好、面板固定是否牢固，防止外露安全風險。',
+                rec: '使用相位檢測器測試線路極性，將鬆動的開關面板重新鎖緊固定。'
             }
         ];
-
-        // 預設Fallback分析 (當 AI 辨識出一般物件時使用)
-        const defaultDefect = {
-            location: '室內結構區域',
-            type: '一般現場組件檢查',
-            severity: '低 (Low)',
-            description: '現場照片顯示相關結構組件。請檢查表面是否有明顯劃痕、污漬、飾面不平整或邊條安裝不緊密等基礎缺陷。',
-            recommendation: '清理表面殘留物，進行細部打磨與補漆修飾，並記錄現場狀況由承建商安排修繕。'
-        };
 
         window.onload = async () => {
             try {
@@ -122,9 +107,9 @@
                 document.getElementById('statusBox').style.background = '#f6ffed';
                 document.getElementById('statusBox').style.borderColor = '#b7eb8f';
                 document.getElementById('statusBox').style.color = '#389e0d';
-                document.getElementById('statusBox').innerText = '✅ 智慧視覺 AI 模型準備就緒，可上載相片！';
+                document.getElementById('statusBox').innerText = '✅ 視覺 AI 分析引擎已準備就緒！';
             } catch (err) {
-                document.getElementById('statusBox').innerText = '⚠️ AI 模型載入失敗，仍可手動輸入資料生成報告。';
+                document.getElementById('statusBox').innerText = '⚠️️ AI 模型初始化失敗，仍可手動編輯與生成報告。';
             }
         };
 
@@ -145,15 +130,16 @@
                     id: index,
                     imgData: base64Img,
                     location: `位置 #${index + 1}`,
-                    type: '分析中...',
+                    type: '進行中...',
                     severity: '中 (Medium)',
-                    description: '正在進行智慧視覺比對與風險分析...',
-                    recommendation: '正在匹配最佳專業修補方案...'
+                    description: '正在辨識中...',
+                    recommendation: '正在辨識中...',
+                    detected: false
                 };
                 items.push(itemData);
                 renderCard(itemData);
 
-                analyzeWithSmartAI(base64Img, index);
+                analyzeImage(base64Img, index);
             }
         }
 
@@ -165,7 +151,7 @@
             });
         }
 
-        async function analyzeWithSmartAI(base64Img, index) {
+        async function analyzeImage(base64Img, index) {
             const imgElement = document.getElementById(`img-preview-${index}`);
             
             imgElement.onload = async () => {
@@ -173,49 +159,52 @@
                     try {
                         const predictions = await aiModel.classify(imgElement);
                         
-                        // 取得 AI 預測的前 3 個特徵標籤
-                        const labels = predictions.map(p => p.className.toLowerCase()).join(' ');
-                        
-                        // 尋找最佳匹配的數據庫條目
+                        // 檢查最高信心度是否大於 15% (0.15)
                         let matched = null;
-                        for (let defect of defectDatabase) {
-                            if (defect.keywords.some(kw => labels.includes(kw))) {
-                                matched = defect;
-                                break;
+                        if (predictions && predictions.length > 0 && predictions[0].probability > 0.15) {
+                            const labelString = predictions.map(p => p.className.toLowerCase()).join(' ');
+                            for (let rule of inspectRules) {
+                                if (rule.keys.some(k => labelString.includes(k))) {
+                                    matched = rule;
+                                    break;
+                                }
                             }
                         }
 
-                        // 若無特殊匹配則使用預設並標註 AI 辨識特徵
-                        if (!matched) {
-                            const topLabel = predictions[0] ? predictions[0].className : '建築組件';
-                            matched = {
-                                ...defaultDefect,
-                                description: `視覺辨識特徵包含 [${topLabel}]。${defaultDefect.description}`
-                            };
+                        if (matched) {
+                            items[index].location = `${matched.loc} (#${index + 1})`;
+                            items[index].type = matched.type;
+                            items[index].severity = matched.sev;
+                            items[index].description = matched.desc;
+                            items[index].recommendation = matched.rec;
+                            items[index].detected = true;
+                        } else {
+                            // 無法辨識時的處理邏輯
+                            items[index].location = `檢查位置 #${index + 1}`;
+                            items[index].type = '待填寫項';
+                            items[index].severity = '低 (Low)';
+                            items[index].description = '⚠️️ 無法自動辨識此照片的建築缺陷，請點擊此處手動填寫詳細描述與風險。';
+                            items[index].recommendation = '⚠️ 無法自動辨識此照片，請點擊此處手動填寫建議修補方案。';
+                            items[index].detected = false;
                         }
-
-                        // 更新數據
-                        items[index].location = `${matched.location} (#${index + 1})`;
-                        items[index].type = matched.type;
-                        items[index].severity = matched.severity;
-                        items[index].description = matched.description;
-                        items[index].recommendation = matched.recommendation;
 
                         updateCardUI(index);
                     } catch (e) {
-                        applyFallback(index);
+                        applyUnrecognized(index);
                     }
                 } else {
-                    applyFallback(index);
+                    applyUnrecognized(index);
                 }
             };
         }
 
-        function applyFallback(index) {
+        function applyUnrecognized(index) {
             items[index].location = `檢查位置 #${index + 1}`;
-            items[index].type = defaultDefect.type;
-            items[index].description = defaultDefect.description;
-            items[index].recommendation = defaultDefect.recommendation;
+            items[index].type = '待填寫項';
+            items[index].severity = '低 (Low)';
+            items[index].description = '⚠️ 無法自動辨識此照片，請手動填寫詳細描述。';
+            items[index].recommendation = '⚠️ 無法自動辨識此照片，請手動填寫修補方案。';
+            items[index].detected = false;
             updateCardUI(index);
         }
 
@@ -230,7 +219,7 @@
                     <p style="font-size:12px; color:#666; margin-top:5px;">照片 #${item.id + 1}</p>
                 </div>
                 <div class="card-fields">
-                    <div><span class="badge" id="status-${item.id}">🤖 智慧 AI 分析完成</span></div>
+                    <div><span class="badge badge-warning" id="status-${item.id}">⏳ 分析中...</span></div>
                     <div>
                         <label>位置 / 項目</label>
                         <input type="text" id="loc-${item.id}" value="${item.location}" onchange="items[${item.id}].location=this.value">
@@ -267,6 +256,15 @@
             document.getElementById(`sev-${index}`).value = item.severity;
             document.getElementById(`desc-${index}`).value = item.description;
             document.getElementById(`rec-${index}`).value = item.recommendation;
+
+            const badge = document.getElementById(`status-${index}`);
+            if (item.detected) {
+                badge.className = 'badge badge-success';
+                badge.innerText = '✅ 已成功辨識結構';
+            } else {
+                badge.className = 'badge badge-warning';
+                badge.innerText = '⚠️ 無法辨識缺陷（請手動輸入）';
+            }
         }
 
         async function exportWord() {
