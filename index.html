@@ -13,38 +13,127 @@
     
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        h1 { color: #1b365d; font-size: 24px; text-align: center; margin-bottom: 8px; }
-        p.subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
-        .model-status { background: #e6f7ff; border: 1px solid #91d5ff; padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-size: 14px; color: #0050b3; }
-        .upload-area { border: 2px dashed #0066cc; background: #f0f7ff; padding: 30px; text-align: center; border-radius: 8px; cursor: pointer; }
-        .upload-area:hover { background: #e1f0ff; }
+        body { 
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%); 
+            min-height: 100vh;
+            margin: 0; 
+            padding: 30px 20px; 
+            color: #2c3e50; 
+        }
+        .container { 
+            max-width: 950px; 
+            margin: 0 auto; 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 35px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); 
+            backdrop-filter: blur(10px);
+        }
+        h1 { 
+            color: #1b365d; 
+            font-size: 26px; 
+            text-align: center; 
+            margin-top: 0;
+            margin-bottom: 20px; 
+            letter-spacing: 0.5px;
+        }
+        .model-status { 
+            background: #e6f7ff; 
+            border: 1px solid #91d5ff; 
+            padding: 12px; 
+            border-radius: 10px; 
+            margin-bottom: 25px; 
+            text-align: center; 
+            font-size: 14px; 
+            color: #0050b3; 
+            font-weight: 500;
+        }
+        .upload-area { 
+            border: 2px dashed #4a90e2; 
+            background: #f4f8ff; 
+            padding: 35px; 
+            text-align: center; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover { 
+            background: #e8f2ff; 
+            border-color: #0056b3; 
+            transform: translateY(-2px);
+        }
         input[type="file"] { display: none; }
-        .card { display: flex; flex-wrap: wrap; gap: 20px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-top: 20px; }
-        .card-img { flex: 1 1 300px; text-align: center; }
-        .card-img img { max-width: 100%; height: auto; max-height: 250px; border-radius: 6px; border: 1px solid #ddd; object-fit: cover; }
-        .card-fields { flex: 1 1 350px; display: flex; flex-direction: column; gap: 10px; }
-        label { font-weight: bold; font-size: 13px; color: #444; }
-        input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+        .card { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 20px; 
+            background: #ffffff; 
+            border: 1px solid #e3e8ee; 
+            border-left: 5px solid #4a90e2;
+            border-radius: 10px; 
+            padding: 20px; 
+            margin-top: 25px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .card-img { flex: 1 1 280px; text-align: center; }
+        .card-img img { 
+            max-width: 100%; 
+            height: auto; 
+            max-height: 250px; 
+            border-radius: 8px; 
+            border: 1px solid #e0e0e0; 
+            object-fit: cover; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .card-fields { flex: 1 1 380px; display: flex; flex-direction: column; gap: 12px; }
+        label { font-weight: 600; font-size: 13px; color: #34495e; }
+        input, select, textarea { 
+            width: 100%; 
+            padding: 9px 12px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 6px; 
+            font-size: 14px; 
+            background-color: #f8fafc;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #4a90e2;
+            background-color: #ffffff;
+        }
         textarea { resize: vertical; height: 85px; }
-        .btn-export { width: 100%; background: #1b365d; color: white; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; }
-        .btn-export:hover { background: #132744; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; font-weight: bold; }
-        .badge-success { background: #52c41a; color: white; }
-        .badge-warning { background: #fa8c16; color: white; }
+        .btn-export { 
+            width: 100%; 
+            background: linear-gradient(135deg, #1b365d 0%, #2c5282 100%); 
+            color: white; 
+            padding: 16px; 
+            border: none; 
+            border-radius: 10px; 
+            font-size: 17px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            margin-top: 30px; 
+            box-shadow: 0 4px 15px rgba(27, 54, 93, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-export:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(27, 54, 93, 0.4);
+        }
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; display: inline-block; font-weight: bold; }
+        .badge-success { background: #e6f4ea; color: #1e7e34; border: 1px solid #b7e1cd; }
+        .badge-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🏢 樓宇驗樓 自動視覺分析與報告生成器</h1>
-        <p class="subtitle">免 API Key、完全免費！自動轉譯專業中文驗樓風險描述與修補方案。</p>
         
         <div id="statusBox" class="model-status">⏳ 正在載入內置 AI 視覺模型，請稍候...</div>
 
         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <strong style="color: #0066cc;">點擊此處批次上載驗樓照片 (可多選)</strong>
-            <p style="margin: 5px 0 0; font-size: 12px; color: #888;">支援 JPG, PNG 格式</p>
+            <strong style="color: #1b365d; font-size: 16px;">點擊此處批次上載驗樓照片 (可多選)</strong>
+            <p style="margin: 6px 0 0; font-size: 13px; color: #64748b;">支援 JPG, PNG 格式</p>
             <input type="file" id="fileInput" multiple accept="image/*" onchange="handleFiles(this.files)">
         </div>
 
@@ -178,7 +267,6 @@
                             items[index].recommendation = matched.rec;
                             items[index].detected = true;
                         } else {
-                            // 未能完全匹配時，給予清晰提示
                             items[index].location = `檢查區域 (#${index + 1})`;
                             items[index].type = '待填寫項目';
                             items[index].severity = '中 (Medium)';
@@ -201,7 +289,7 @@
             items[index].location = `檢查區域 (#${index + 1})`;
             items[index].type = '待填寫項目';
             items[index].severity = '中 (Medium)';
-            items[index].description = '⚠️ 無法自動識別此照片之建築缺陷，請點擊此處輸入詳細描述與風險。';
+            items[index].description = '⚠️️ 無法自動識別此照片之建築缺陷，請點擊此處輸入詳細描述與風險。';
             items[index].recommendation = '⚠️ 無法自動識別此照片之建築缺陷，請點擊此處輸入建議修補方案。';
             items[index].detected = false;
             updateCardUI(index);
@@ -215,7 +303,7 @@
             card.innerHTML = `
                 <div class="card-img">
                     <img id="img-preview-${item.id}" src="${item.imgData}" alt="Defect Photo">
-                    <p style="font-size:12px; color:#666; margin-top:5px;">照片 #${item.id + 1}</p>
+                    <p style="font-size:12px; color:#64748b; margin-top:8px; font-weight:500;">照片 #${item.id + 1}</p>
                 </div>
                 <div class="card-fields">
                     <div><span class="badge badge-warning" id="status-${item.id}">⏳ 分析中...</span></div>
@@ -262,17 +350,17 @@
                 badge.innerText = '✅ 智慧分析完成';
             } else {
                 badge.className = 'badge badge-warning';
-                badge.innerText = '⚠️️ 請手動補充內容';
+                badge.innerText = '⚠ 請手動補充內容';
             }
         }
 
         async function exportWord() {
-            const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, TextRun, ImageRun, AlignmentType, PageBreak } = docx;
+            const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, TextRun, ImageRun, AlignmentType } = docx;
 
             const children = [
                 new Paragraph({
                     children: [
-                        new TextRun({ text: "樓宇驗樓及缺陷分析報告 (Building Inspection Report)", bold: true, size: 36, color: "1B365D", font: "Microsoft JhengHei" })
+                        new TextRun({ text: "樓宇驗樓及缺陷分析報告 (Building Inspection Report)", bold: true, size: 32, color: "1B365D", font: "Microsoft JhengHei" })
                     ],
                     space: { after: 300 }
                 })
@@ -300,11 +388,12 @@
                         children: [
                             new TableCell({
                                 width: { size: 30, type: WidthType.PERCENTAGE },
-                                shading: { fill: "F2F4F7" },
-                                children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 19, font: "Microsoft JhengHei" })] })]
+                                shading: { fill: "EBF3FA" }, // 雅致藍灰色背景
+                                children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 19, color: "1B365D", font: "Microsoft JhengHei" })] })]
                             }),
                             new TableCell({
                                 width: { size: 70, type: WidthType.PERCENTAGE },
+                                shading: { fill: "FFFFFF" },
                                 children: [new Paragraph({ children: [new TextRun({ text: val, size: 19, font: "Microsoft JhengHei" })] })]
                             })
                         ]
@@ -314,29 +403,33 @@
                 const outerTable = new Table({
                     width: { size: 100, type: WidthType.PERCENTAGE },
                     borders: {
-                        top: { style: "none" }, bottom: { style: "none" },
-                        left: { style: "none" }, right: { style: "none" },
-                        insideHorizontal: { style: "none" }, insideVertical: { style: "none" }
+                        top: { style: "single", size: 1, color: "CBD5E1" },
+                        bottom: { style: "single", size: 1, color: "CBD5E1" },
+                        left: { style: "single", size: 1, color: "CBD5E1" },
+                        right: { style: "single", size: 1, color: "CBD5E1" },
+                        insideHorizontal: { style: "single", size: 1, color: "E2E8F0" },
+                        insideVertical: { style: "single", size: 1, color: "E2E8F0" }
                     },
                     rows: [
                         new TableRow({
                             children: [
                                 new TableCell({
-                                    width: { size: 45, type: WidthType.PERCENTAGE },
+                                    width: { size: 42, type: WidthType.PERCENTAGE },
+                                    shading: { fill: "F8FAFC" },
                                     children: [
                                         new Paragraph({
                                             alignment: AlignmentType.CENTER,
                                             children: [
                                                 new ImageRun({
                                                     data: bytes,
-                                                    transformation: { width: 220, height: 165 }
+                                                    transformation: { width: 200, height: 150 }
                                                 })
                                             ]
                                         })
                                     ]
                                 }),
                                 new TableCell({
-                                    width: { size: 55, type: WidthType.PERCENTAGE },
+                                    width: { size: 58, type: WidthType.PERCENTAGE },
                                     children: [
                                         new Table({
                                             width: { size: 100, type: WidthType.PERCENTAGE },
@@ -350,10 +443,9 @@
                 });
 
                 children.push(outerTable);
-
-                if (i < items.length - 1) {
-                    children.push(new Paragraph({ children: [new PageBreak()] }));
-                }
+                
+                // 順序排列：各項目之間保留適當間距，但不強制分頁
+                children.push(new Paragraph({ space: { after: 200 } }));
             }
 
             const doc = new Document({ sections: [{ properties: {}, children: children }] });
