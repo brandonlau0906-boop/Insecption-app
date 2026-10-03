@@ -8,8 +8,8 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <!-- 載入免費內置 AI 模型 (TensorFlow.js + MobileNet) -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <script src="https://unpkg.com/@tensorflow/tfjs"></script>
+    <script src="https://unpkg.com/@tensorflow-models/mobilenet"></script>
     
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -109,14 +109,12 @@
         async function analyzeWithLocalAI(base64Img, index) {
             const imgElement = document.getElementById(`img-preview-${index}`);
             
-            // 待圖片加載完成後進行模型辨識
             imgElement.onload = async () => {
                 if (aiModel) {
                     try {
                         const predictions = await aiModel.classify(imgElement);
                         const topResult = predictions[0] ? predictions[0].className : '建築組件';
                         
-                        // 根據辨識結果進行繁體中文對應 mapping
                         let predictedType = '組件/設施檢查';
                         let predictedDesc = `AI 視覺辨識特徵：包含 ${topResult} 相關結構。`;
 
@@ -131,7 +129,6 @@
                             predictedDesc = '發現窗框組件，建議測試開關順暢度及防水膠邊是否老化。';
                         }
 
-                        // 更新數據與介面
                         items[index].type = predictedType;
                         items[index].description = predictedDesc;
                         updateCardUI(index);
