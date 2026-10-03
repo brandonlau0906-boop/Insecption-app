@@ -11,11 +11,13 @@
         body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         h1 { color: #1b365d; font-size: 24px; text-align: center; margin-bottom: 8px; }
-        p.subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 25px; }
+        p.subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+        .api-box { background: #fff8e6; border: 1px solid #ffe58f; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .api-box input { width: 100%; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; }
         .upload-area { border: 2px dashed #0066cc; background: #f0f7ff; padding: 30px; text-align: center; border-radius: 8px; cursor: pointer; }
         .upload-area:hover { background: #e1f0ff; }
         input[type="file"] { display: none; }
-        .card { display: flex; flex-wrap: wrap; gap: 20px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-top: 20px; }
+        .card { display: flex; flex-wrap: wrap; gap: 20px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-top: 20px; position: relative; }
         .card-img { flex: 1 1 300px; text-align: center; }
         .card-img img { max-width: 100%; height: auto; max-height: 250px; border-radius: 6px; border: 1px solid #ddd; object-fit: cover; }
         .card-fields { flex: 1 1 350px; display: flex; flex-direction: column; gap: 10px; }
@@ -24,13 +26,20 @@
         textarea { resize: vertical; height: 60px; }
         .btn-export { width: 100%; background: #1b365d; color: white; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; }
         .btn-export:hover { background: #132744; }
+        .loading-badge { background: #1890ff; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; margin-bottom: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🏢 樓宇驗樓 AI 分析與「左圖右文」報告生成器</h1>
-        <p class="subtitle">支援所有手機及電腦瀏覽器！選擇照片後可自訂分析內容，並一鍵匯出 Word 報告 (.docx)。</p>
+        <h1>🏢 樓宇驗樓 AI 自動視覺分析與報告生成器</h1>
+        <p class="subtitle">上載相片後，AI（GPT-4o）會自動辨識圖片並分析缺陷，生成專業驗樓報告！</p>
         
+        <div class="api-box">
+            <label for="apiKey">🔑 輸入你的 OpenAI API Key（以 sk- 開頭）：</label>
+            <input type="password" id="apiKey" placeholder="sk-proj-..." onchange="localStorage.setItem('openai_key', this.value)">
+            <p style="font-size: 11px; color: #888; margin: 5px 0 0;">註：Key 僅儲存在你本機瀏覽器，不會傳送至任何第三方伺服器。</p>
+        </div>
+
         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
             <strong style="color: #0066cc;">點擊此處批次上載驗樓照片 (可多選)</strong>
             <p style="margin: 5px 0 0; font-size: 12px; color: #888;">支援 JPG, PNG 格式</p>
@@ -45,77 +54,159 @@
     <script>
         let items = [];
 
-        function handleFiles(files) {
+        // 載入已儲存的 API Key
+        window.onload = () => {
+            const savedKey = localStorage.getItem('openai_key');
+            if (savedKey) document.getElementById('apiKey').value = savedKey;
+        };
+
+        async function handleFiles(files) {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (!apiKey) {
+                alert("請先在上方輸入你的 OpenAI API Key！");
+                return;
+            }
+
             const container = document.getElementById('cardsContainer');
             container.innerHTML = '';
             items = [];
 
-            if(files.length > 0) {
+            if (files.length > 0) {
                 document.getElementById('exportBtn').style.display = 'block';
             }
 
-            Array.from(files).forEach((file, index) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const imgData = e.target.result;
-                    const itemData = {
-                        id: index,
-                        imgData: imgData,
-                        location: `客廳 / 牆身 #${index + 1}`,
-                        type: '結構性斜裂縫',
-                        severity: '高 (High)',
-                        description: '牆身出現約 1.5mm 寬斜向裂縫，貫穿漆層至批盪底層，疑似沉降或剪切應力所致。',
-                        recommendation: '建議進行注漿填補 (Epoxy Injection)，並監測裂縫是否持續擴展。'
-                    };
-                    items.push(itemData);
-                    renderCard(itemData);
+            for (let index = 0; index < files.length; index++) {
+                const file = files[index];
+                const base64Img = await fileToBase64(file);
+
+                const itemData = {
+                    id: index,
+                    imgData: base64Img,
+                    location: `位置 #${index + 1}`,
+                    type: '分析中...',
+                    severity: '中 (Medium)',
+                    description: 'AI 正在分析圖片中，請稍候...',
+                    recommendation: 'AI 正在生成修補建議...'
                 };
+                items.push(itemData);
+                renderCard(itemData);
+
+                // 調用 AI 分析圖片
+                analyzeImageWithAI(apiKey, base64Img, index);
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
                 reader.readAsDataURL(file);
             });
+        }
+
+        async function analyzeImageWithAI(apiKey, base64Img, index) {
+            const statusElem = document.getElementById(`status-${index}`);
+            try {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o",
+                        messages: [
+                            {
+                                role: "user",
+                                content: [
+                                    {
+                                        type: "text",
+                                        text: "你是一位香港專業樓宇驗樓師。請分析這張照片中的建築物/室內缺陷，並嚴格回傳JSON格式，包含以下4個欄位：\n1. location: 猜測可能位置 (例如: 客廳牆身 / 天花板 / 窗框)\n2. type: 缺陷類型 (例如: 結構性裂縫 / 滲水痕跡 / 漆面剥落 / 空鼓)\n3. severity: 嚴重程度 (只填: 高 (High) / 中 (Medium) / 低 (Low))\n4. description: 詳細描述與風險 (約30-50字，以專業繁體中文撰寫)\n5. recommendation: 建議修補方案 (約30-50字)\n請直接回傳JSON，不要包含Markdown符號如 ```json。"
+                                    },
+                                    {
+                                        type: "image_url",
+                                        image_url: { url: base64Img }
+                                    }
+                                ]
+                            }
+                        ],
+                        max_tokens: 500
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                let rawText = data.choices[0].message.content.trim();
+                rawText = rawText.replace(/```json/g, '').replace(/```/g, '');
+                const result = JSON.parse(rawText);
+
+                // 更新資料與畫面
+                items[index].location = result.location || `位置 #${index + 1}`;
+                items[index].type = result.type || '其他缺陷';
+                items[index].severity = result.severity || '中 (Medium)';
+                items[index].description = result.description || '無';
+                items[index].recommendation = result.recommendation || '無';
+
+                updateCardUI(index);
+            } catch (err) {
+                console.error(err);
+                if (statusElem) statusElem.innerText = "❌ AI 分析失敗 (" + err.message + ")";
+            }
         }
 
         function renderCard(item) {
             const container = document.getElementById('cardsContainer');
             const card = document.createElement('div');
             card.className = 'card';
+            card.id = `card-${item.id}`;
             card.innerHTML = `
                 <div class="card-img">
                     <img src="${item.imgData}" alt="Defect Photo">
                     <p style="font-size:12px; color:#666; margin-top:5px;">照片 #${item.id + 1}</p>
                 </div>
                 <div class="card-fields">
+                    <div><span class="loading-badge" id="status-${item.id}">🤖 AI 正在看圖分析中...</span></div>
                     <div>
                         <label>位置 / 項目</label>
-                        <input type="text" value="${item.location}" onchange="items[${item.id}].location=this.value">
+                        <input type="text" id="loc-${item.id}" value="${item.location}" onchange="items[${item.id}].location=this.value">
                     </div>
                     <div>
                         <label>缺陷類型</label>
-                        <select onchange="items[${item.id}].type=this.value">
-                            <option value="結構性斜裂縫">結構性斜裂縫</option>
-                            <option value="滲水痕跡與漆面剥落">滲水痕跡與漆面剥落</option>
-                            <option value="空鼓瓷磚">空鼓瓷磚</option>
-                            <option value="鋼筋外露/混凝土剝落">鋼筋外露/混凝土剝落</option>
-                        </select>
+                        <input type="text" id="type-${item.id}" value="${item.type}" onchange="items[${item.id}].type=this.value">
                     </div>
                     <div>
                         <label>嚴重程度</label>
-                        <select onchange="items[${item.id}].severity=this.value">
+                        <select id="sev-${item.id}" onchange="items[${item.id}].severity=this.value">
                             <option value="高 (High)">高 (High)</option>
-                            <option value="中 (Medium)">中 (Medium)</option>
+                            <option value="中 (Medium)" selected>中 (Medium)</option>
                             <option value="低 (Low)">低 (Low)</option>
                         </select>
                     </div>
                     <div>
                         <label>詳細描述與風險</label>
-                        <textarea onchange="items[${item.id}].description=this.value">${item.description}</textarea>
+                        <textarea id="desc-${item.id}" onchange="items[${item.id}].description=this.value">${item.description}</textarea>
                     </div>
                     <div>
                         <label>建議修補方案</label>
-                        <textarea onchange="items[${item.id}].recommendation=this.value">${item.recommendation}</textarea>
+                        <textarea id="rec-${item.id}" onchange="items[${item.id}].recommendation=this.value">${item.recommendation}</textarea>
                     </div>
                 </div>
             `;
             container.appendChild(card);
+        }
+
+        function updateCardUI(index) {
+            const item = items[index];
+            document.getElementById(`loc-${index}`).value = item.location;
+            document.getElementById(`type-${index}`).value = item.type;
+            document.getElementById(`sev-${index}`).value = item.severity;
+            document.getElementById(`desc-${index}`).value = item.description;
+            document.getElementById(`rec-${index}`).value = item.recommendation;
+            
+            const badge = document.getElementById(`status-${index}`);
+            badge.style.background = '#52c41a';
+            badge.innerText = '✅ AI 分析完成';
         }
 
         async function exportWord() {
@@ -132,7 +223,6 @@
 
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
-
                 const base64Data = item.imgData.split(',')[1];
                 const binaryString = window.atob(base64Data);
                 const bytes = new Uint8Array(binaryString.length);
