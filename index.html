@@ -27,7 +27,7 @@
         .card-fields { flex: 1 1 350px; display: flex; flex-direction: column; gap: 10px; }
         label { font-weight: bold; font-size: 13px; color: #444; }
         input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
-        textarea { resize: vertical; height: 75px; }
+        textarea { resize: vertical; height: 85px; }
         .btn-export { width: 100%; background: #1b365d; color: white; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; }
         .btn-export:hover { background: #132744; }
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; font-weight: bold; }
@@ -38,7 +38,7 @@
 <body>
     <div class="container">
         <h1>🏢 樓宇驗樓 自動視覺分析與報告生成器</h1>
-        <p class="subtitle">免 API Key、完全免費！無法自動識別時將提示手動填寫。</p>
+        <p class="subtitle">免 API Key、完全免費！自動轉譯專業中文驗樓風險描述與修補方案。</p>
         
         <div id="statusBox" class="model-status">⏳ 正在載入內置 AI 視覺模型，請稍候...</div>
 
@@ -57,47 +57,47 @@
         let aiModel = null;
         let items = [];
 
-        // 驗樓特徵比對庫
+        // 專業驗樓風險與描述資料庫
         const inspectRules = [
             {
                 keys: ['pipe', 'tub', 'sink', 'faucet', 'plumbing', 'drain', 'shower', 'basin', 'toilet'],
-                loc: '衛浴 / 水管管道',
-                type: '水處設施及管道檢查',
+                loc: '水喉管道 / 衛浴設施',
+                type: '管道及水處設施檢查',
                 sev: '中 (Medium)',
-                desc: '經視覺掃描，該區域涉及水喉及潔具配件。重點檢查項目包括管路接縫密封性、排水順暢度及金屬介面是否有滲漏風化痕跡。',
-                rec: '進行通水與試壓測試，對老化的矽膠膠條進行拆除重新打膠，確保無漏水隱患。'
+                desc: '現場相片顯示為管道或衛浴區域。重點觀察管路接縫是否有水漬滲漏痕跡、金屬配件風化鏽蝕，若長時間未有處置易引發牆體發霉及下層漏水風險。',
+                rec: '進行通水壓力測試，檢查排水順暢度。拆除老化矽膠密封條並重新打膠，替換風化嚴重之金屬接頭。'
             },
             {
                 keys: ['wall', 'tile', 'brick', 'plaster', 'concrete', 'stone'],
-                loc: '牆面 / 飾面磁磚',
-                type: '牆面抹灰與表面飾面',
+                loc: '牆面抹灰 / 飾面磁磚',
+                type: '牆面及磁磚狀況檢查',
                 sev: '中 (Medium)',
-                desc: '檢測到牆體或飾面結構。主要檢查是否有批盪不平整、漆面開裂、受潮剝落或磁磚空鼓等情況。',
-                rec: '使用驗樓敲擊棒試敲確認空鼓範圍，開裂處需剷除舊漆層後重施抗裂底漆與面漆。'
+                desc: '現場相片顯示為牆面或飾面結構。需關注是否有漆面膨脹起泡、微細髮絲裂紋或磁磚空鼓現象，若水氣滲入可能導致批盪層大規模剝落。',
+                rec: '使用專業驗樓敲擊棒進行全盤空鼓測試；裂紋處需剷除鬆散舊漆層，重新施作防水底漆與抗裂面漆。'
             },
             {
                 keys: ['window', 'glass', 'frame', 'sliding'],
-                loc: '客廳 / 房間窗戶',
-                type: '鋁窗及玻璃配件',
+                loc: '鋁窗框體 / 玻璃組件',
+                type: '鋁窗結構與防水膠條檢查',
                 sev: '高 (High)',
-                desc: '檢測到窗框或玻璃組件。需關注窗框四角防水膠條是否硬化開裂、鉸鏈是否鬆動及雨天滲水風險。',
-                rec: '測試開關緊密性，重新補打外框防水膠，更換磨損的窗框軟膠條。'
+                desc: '現場相片顯示為窗框或玻璃區域。需關注窗框四角防水膠條是否硬化開裂、鎖扣與鉸鏈鬆動，颱風或暴雨天極易引發雨水倒灌滲漏。',
+                rec: '檢查窗框固定螺絲，更換老化變形的防水軟膠條，並於外框邊縫重新填補耐候型玻璃矽膠。'
             },
             {
                 keys: ['door', 'cabinet', 'wood', 'table', 'chair'],
-                loc: '室內木作 / 櫃體',
-                type: '飾面與結構組件檢查',
+                loc: '木作門扇 / 櫃體設施',
+                type: '木作飾面與結構檢查',
                 sev: '低 (Low)',
-                desc: '現場照片顯示包含木作櫃體或門扇。重點檢查邊角是否有刮痕、飾面貼皮膨脹起泡或關閉不平整現象。',
-                rec: '針對表面劃痕進行木作補漆修飾，微調鉸鏈或邊條，保持環境乾燥以防受潮。'
+                desc: '現場相片顯示為木作門扇或櫃體區域。常見缺陷包括表面劃痕傷痕、木皮受潮膨脹起起、門扇開合碰撞或鉸鏈下垂。',
+                rec: '調整門頁鉸鏈螺絲以校正關閉間隙，針對表面磨損進行專用木作補漆修飾，保持周邊通風乾燥。'
             },
             {
                 keys: ['light', 'lamp', 'socket', 'switch', 'wire', 'electronic', 'plug'],
-                loc: '開關插座 / 電器設備',
-                type: '電力裝置與面板檢查',
+                loc: '開關插座 / 電力裝置',
+                type: '電力裝置與面板安全性檢查',
                 sev: '高 (High)',
-                desc: '發現開關面板或電器線路區域。需驗證線路收口是否完好、面板固定是否牢固，防止外露安全風險。',
-                rec: '使用相位檢測器測試線路極性，將鬆動的開關面板重新鎖緊固定。'
+                desc: '現場相片顯示為開關面板或電器線路。重點為面板安裝是否緊密貼牆、是否有線路外露或缺乏接地保護，存在漏電及短路安全隱患。',
+                rec: '使用相位檢測儀測試極性及接地狀況，重新固定鬆動面板，對外露線路加裝絕緣保護套管。'
             }
         ];
 
@@ -109,7 +109,7 @@
                 document.getElementById('statusBox').style.color = '#389e0d';
                 document.getElementById('statusBox').innerText = '✅ 視覺 AI 分析引擎已準備就緒！';
             } catch (err) {
-                document.getElementById('statusBox').innerText = '⚠️️ AI 模型初始化失敗，仍可手動編輯與生成報告。';
+                document.getElementById('statusBox').innerText = '⚠️ AI 模型初始化失敗，仍可手動編輯與生成報告。';
             }
         };
 
@@ -130,10 +130,10 @@
                     id: index,
                     imgData: base64Img,
                     location: `位置 #${index + 1}`,
-                    type: '進行中...',
+                    type: '分析中...',
                     severity: '中 (Medium)',
-                    description: '正在辨識中...',
-                    recommendation: '正在辨識中...',
+                    description: '正在分析照片結構細節...',
+                    recommendation: '正在匹配最佳修補方案...',
                     detected: false
                 };
                 items.push(itemData);
@@ -159,9 +159,8 @@
                     try {
                         const predictions = await aiModel.classify(imgElement);
                         
-                        // 檢查最高信心度是否大於 15% (0.15)
                         let matched = null;
-                        if (predictions && predictions.length > 0 && predictions[0].probability > 0.15) {
+                        if (predictions && predictions.length > 0 && predictions[0].probability > 0.12) {
                             const labelString = predictions.map(p => p.className.toLowerCase()).join(' ');
                             for (let rule of inspectRules) {
                                 if (rule.keys.some(k => labelString.includes(k))) {
@@ -179,12 +178,12 @@
                             items[index].recommendation = matched.rec;
                             items[index].detected = true;
                         } else {
-                            // 無法辨識時的處理邏輯
-                            items[index].location = `檢查位置 #${index + 1}`;
-                            items[index].type = '待填寫項';
-                            items[index].severity = '低 (Low)';
-                            items[index].description = '⚠️️ 無法自動辨識此照片的建築缺陷，請點擊此處手動填寫詳細描述與風險。';
-                            items[index].recommendation = '⚠️ 無法自動辨識此照片，請點擊此處手動填寫建議修補方案。';
+                            // 未能完全匹配時，給予清晰提示
+                            items[index].location = `檢查區域 (#${index + 1})`;
+                            items[index].type = '待填寫項目';
+                            items[index].severity = '中 (Medium)';
+                            items[index].description = '⚠️ 無法自動識別此照片之建築缺陷，請點擊此處輸入詳細描述與風險。';
+                            items[index].recommendation = '⚠️ 無法自動識別此照片之建築缺陷，請點擊此處輸入建議修補方案。';
                             items[index].detected = false;
                         }
 
@@ -199,11 +198,11 @@
         }
 
         function applyUnrecognized(index) {
-            items[index].location = `檢查位置 #${index + 1}`;
-            items[index].type = '待填寫項';
-            items[index].severity = '低 (Low)';
-            items[index].description = '⚠️ 無法自動辨識此照片，請手動填寫詳細描述。';
-            items[index].recommendation = '⚠️ 無法自動辨識此照片，請手動填寫修補方案。';
+            items[index].location = `檢查區域 (#${index + 1})`;
+            items[index].type = '待填寫項目';
+            items[index].severity = '中 (Medium)';
+            items[index].description = '⚠️ 無法自動識別此照片之建築缺陷，請點擊此處輸入詳細描述與風險。';
+            items[index].recommendation = '⚠️ 無法自動識別此照片之建築缺陷，請點擊此處輸入建議修補方案。';
             items[index].detected = false;
             updateCardUI(index);
         }
@@ -260,10 +259,10 @@
             const badge = document.getElementById(`status-${index}`);
             if (item.detected) {
                 badge.className = 'badge badge-success';
-                badge.innerText = '✅ 已成功辨識結構';
+                badge.innerText = '✅ 智慧分析完成';
             } else {
                 badge.className = 'badge badge-warning';
-                badge.innerText = '⚠️ 無法辨識缺陷（請手動輸入）';
+                badge.innerText = '⚠️️ 請手動補充內容';
             }
         }
 
