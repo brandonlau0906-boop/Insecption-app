@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏢 驗樓 AI 助手 - 左圖右文報告生成器</title>
+    <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        h1 { color: #1b365d; font-size: 24px; text-align: center; margin-bottom: 8px; }
+        p.subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 25px; }
+        .upload-area { border: 2px dashed #0066cc; background: #f0f7ff; padding: 30px; text-align: center; border-radius: 8px; cursor: pointer; }
+        .upload-area:hover { background: #e1f0ff; }
+        input[type="file"] { display: none; }
+        .card { display: flex; flex-wrap: wrap; gap: 20px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-top: 20px; }
+        .card-img { flex: 1 1 300px; text-align: center; }
+        .card-img img { max-width: 100%; height: auto; max-height: 250px; border-radius: 6px; border: 1px solid #ddd; object-fit: cover; }
+        .card-fields { flex: 1 1 350px; display: flex; flex-direction: column; gap: 10px; }
+        label { font-weight: bold; font-size: 13px; color: #444; }
+        input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+        textarea { resize: vertical; height: 60px; }
+        .btn-export { width: 100%; background: #1b365d; color: white; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; }
+        .btn-export:hover { background: #132744; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 樓宇驗樓 AI 分析與「左圖右文」報告生成器</h1>
+        <p class="subtitle">支援所有手機及電腦瀏覽器！選擇照片後可自訂分析內容，並一鍵匯出 Word 報告 (.docx)。</p>
+        
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <strong style="color: #0066cc;">點擊此處批次上載驗樓照片 (可多選)</strong>
+            <p style="margin: 5px 0 0; font-size: 12px; color: #888;">支援 JPG, PNG 格式</p>
+            <input type="file" id="fileInput" multiple accept="image/*" onchange="handleFiles(this.files)">
+        </div>
+
+        <div id="cardsContainer"></div>
+
+        <button id="exportBtn" class="btn-export" style="display: none;" onclick="exportWord()">📄 一鍵匯出 Word (.docx) 報告</button>
+    </div>
+
+    <script>
+        let items = [];
+
+        function handleFiles(files) {
+            const container = document.getElementById('cardsContainer');
+            container.innerHTML = '';
+            items = [];
+
+            if(files.length > 0) {
+                document.getElementById('exportBtn').style.display = 'block';
+            }
+
+            Array.from(files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imgData = e.target.result;
+                    const itemData = {
+                        id: index,
+                        imgData: imgData,
+                        location: `客廳 / 牆身 #${index + 1}`,
+                        type: '結構性斜裂縫',
+                        severity: '高 (High)',
+                        description: '牆身出現約 1.5mm 寬斜向裂縫，貫穿漆層至批盪底層，疑似沉降或剪切應力所致。',
+                        recommendation: '建議進行注漿填補 (Epoxy Injection)，並監測裂縫是否持續擴展。'
+                    };
+                    items.push(itemData);
+                    renderCard(itemData);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderCard(item) {
+            const container = document.getElementById('cardsContainer');
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-img">
+                    <img src="${item.imgData}" alt="Defect Photo">
+                    <p style="font-size:12px; color:#666; margin-top:5px;">照片 #${item.id + 1}</p>
+                </div>
+                <div class="card-fields">
+                    <div>
+                        <label>位置 / 項目</label>
+                        <input type="text" value="${item.location}" onchange="items[${item.id}].location=this.value">
+                    </div>
+                    <div>
+                        <label>缺陷類型</label>
+                        <select onchange="items[${item.id}].type=this.value">
+                            <option value="結構性斜裂縫">結構性斜裂縫</option>
+                            <option value="滲水痕跡與漆面剥落">滲水痕跡與漆面剥落</option>
+                            <option value="空鼓瓷磚">空鼓瓷磚</option>
+                            <option value="鋼筋外露/混凝土剝落">鋼筋外露/混凝土剝落</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>嚴重程度</label>
+                        <select onchange="items[${item.id}].severity=this.value">
+                            <option value="高 (High)">高 (High)</option>
+                            <option value="中 (Medium)">中 (Medium)</option>
+                            <option value="低 (Low)">低 (Low)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>詳細描述與風險</label>
+                        <textarea onchange="items[${item.id}].description=this.value">${item.description}</textarea>
+                    </div>
+                    <div>
+                        <label>建議修補方案</label>
+                        <textarea onchange="items[${item.id}].recommendation=this.value">${item.recommendation}</textarea>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        }
+
+        async function exportWord() {
+            const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, TextRun, ImageRun, AlignmentType, PageBreak } = docx;
+
+            const children = [
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: "樓宇驗樓及缺陷分析報告 (Building Inspection Report)", bold: true, size: 36, color: "1B365D", font: "Microsoft JhengHei" })
+                    ],
+                    space: { after: 300 }
+                })
+            ];
+
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+
+                const base64Data = item.imgData.split(',')[1];
+                const binaryString = window.atob(base64Data);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let j = 0; j < binaryString.length; j++) {
+                    bytes[j] = binaryString.charCodeAt(j);
+                }
+
+                const fields = [
+                    ["位置 / 項目", item.location],
+                    ["缺陷類型", item.type],
+                    ["嚴重程度", item.severity],
+                    ["詳細描述與風險", item.description],
+                    ["建議修補方案", item.recommendation]
+                ];
+
+                const infoRows = fields.map(([label, val]) => {
+                    return new TableRow({
+                        children: [
+                            new TableCell({
+                                width: { size: 30, type: WidthType.PERCENTAGE },
+                                shading: { fill: "F2F4F7" },
+                                children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 19, font: "Microsoft JhengHei" })] })]
+                            }),
+                            new TableCell({
+                                width: { size: 70, type: WidthType.PERCENTAGE },
+                                children: [new Paragraph({ children: [new TextRun({ text: val, size: 19, font: "Microsoft JhengHei" })] })]
+                            })
+                        ]
+                    });
+                });
+
+                const outerTable = new Table({
+                    width: { size: 100, type: WidthType.PERCENTAGE },
+                    borders: {
+                        top: { style: "none" }, bottom: { style: "none" },
+                        left: { style: "none" }, right: { style: "none" },
+                        insideHorizontal: { style: "none" }, insideVertical: { style: "none" }
+                    },
+                    rows: [
+                        new TableRow({
+                            children: [
+                                new TableCell({
+                                    width: { size: 45, type: WidthType.PERCENTAGE },
+                                    children: [
+                                        new Paragraph({
+                                            alignment: AlignmentType.CENTER,
+                                            children: [
+                                                new ImageRun({
+                                                    data: bytes,
+                                                    transformation: { width: 220, height: 165 }
+                                                })
+                                            ]
+                                        })
+                                    ]
+                                }),
+                                new TableCell({
+                                    width: { size: 55, type: WidthType.PERCENTAGE },
+                                    children: [
+                                        new Table({
+                                            width: { size: 100, type: WidthType.PERCENTAGE },
+                                            rows: infoRows
+                                        })
+                                    ]
+                                })
+                            ]
+                        })
+                    ]
+                });
+
+                children.push(outerTable);
+
+                if (i < items.length - 1) {
+                    children.push(new Paragraph({ children: [new PageBreak()] }));
+                }
+            }
+
+            const doc = new Document({ sections: [{ properties: {}, children: children }] });
+            const blob = await Packer.toBlob(doc);
+            saveAs(blob, "Building_Inspection_Report.docx");
+        }
+    </script>
+</body>
+</html>
